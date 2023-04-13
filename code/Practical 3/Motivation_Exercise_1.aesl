@@ -1,0 +1,223 @@
+<!DOCTYPE aesl-source>
+<network>
+
+
+<!--list of global events-->
+
+
+<!--list of constants-->
+<constant value="500" name="MAX_SPEED"/>
+<constant value="1000" name="MAX_PHYSIOLOGICAL_VAR"/>
+<constant value="150" name="PHYSIOLOGY_TICK"/>
+<constant value="500" name="RECHARGE_NEAR"/>
+<constant value="500" name="HYDRATION_THRESH"/>
+<constant value="10" name="RECHARGE_RATE"/>
+<constant value="10" name="HYDRATION_RATE"/>
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node thymio-II-->
+<node nodeId="1" name="thymio-II"># Possible motivation implementation with Braitenberg-like behaviour
+# Example solution (other solutions possible) for Practical 3, Ex 1, following steps 1-7
+# Further work: implement different subroutines to calculate motivation and use them
+# by Matthew Lewis
+
+# -------------------------------------------
+# Declare and optionally initialise variables
+# -------------------------------------------
+
+var alive # Boolean: 1 = alive; 0 = dead
+
+# Variables to hold motor values
+var mot_l
+var mot_r
+
+# physiological variables
+# with corresponding error (deficit) and motivations etc
+var energy
+var energy_error
+var motivation_recharge
+var hydration
+var hydration_error
+var motivation_hydrate
+
+
+# ----------------------
+# Code called on startup
+# ----------------------
+
+# Initialise variables
+alive = 1
+energy = 500
+hydration = 500
+timer.period[0] = PHYSIOLOGY_TICK # in milliseconds
+
+# --------------------------------------
+# Declare subroutines and event handlers
+# --------------------------------------
+
+# Use forward proximity sensors to approach objects and maintain distance
+sub braitenberg_approach
+	mot_l = 200
+	mot_l -= prox.horizontal[0]/16
+	mot_l -= prox.horizontal[1]/16
+
+	mot_r = 200
+	mot_r -= prox.horizontal[3]/16
+	mot_r -= prox.horizontal[4]/16
+
+
+# Use forward proximity sensors to avoid objects
+sub braitenberg_avoid
+	mot_l = 200
+	mot_l += prox.horizontal[0]/16
+	mot_l += prox.horizontal[1]/16
+	mot_l += prox.horizontal[2]/16
+	mot_l -= prox.horizontal[3]/16
+	mot_l -= prox.horizontal[4]/16
+
+	mot_r = 200
+	mot_r -= prox.horizontal[0]/16
+	mot_r -= prox.horizontal[1]/16
+	mot_r -= prox.horizontal[2]/16
+	mot_r += prox.horizontal[3]/16
+	mot_r += prox.horizontal[4]/16
+
+
+# Calculate the current values of errors (deficits)
+sub calc_errors
+	# In this case the maximum value if also the target value/ideal value/setpoint.
+	# So the energy is the difference between the maximum value and the current value
+	energy_error = MAX_PHYSIOLOGICAL_VAR - energy
+	hydration_error = MAX_PHYSIOLOGICAL_VAR - hydration
+
+
+# Calculate the current values of the motivations
+# Assumes that errors have already been calculated
+# In this simple version, the motivation is equal to the corresponding error.
+# Note: this motivation calculation can lead to "dithering" - rapid switching between behaviours.
+# We might want to change this to increase the "persistence" of behaviours for better survival.
+sub calc_motivations_equal_error
+	motivation_recharge = energy_error
+	motivation_hydrate = hydration_error
+
+
+# Another way of calculating the motivation - see worksheet
+sub calc_motivations_equal_cue
+	# Fill me in!
+
+
+# Another way of calculating the motivation - see worksheet
+sub calc_motivations_equal_energy_plus
+	# Fill me in!
+
+
+# Another way of calculating the motivation - see worksheet
+sub calc_motivations_combine_error_and_cue
+	# Fill me in!
+
+
+# Use Winner-Take-All behaviour selection algorithm on the motivations
+# The motivation with the largest value will "win" &amp; corresponding behaviour executed
+sub wta_motivations
+	callsub calc_errors
+	callsub calc_motivations_equal_error
+	# Check the largest (winner)
+	if motivation_recharge > motivation_hydrate then
+		callsub behaviour_seek_energy
+	else
+		callsub behaviour_seek_hydrate
+	end
+
+
+# Physiological variables decrease over time
+# Decrease both by 1 and check to see if robot is dead
+sub physiological_var_decay
+	energy -= 1
+	hydration -= 1
+	if energy &lt;= 0 or hydration &lt;= 0 then
+		callsub dead
+	end
+
+
+# If middle sensor detects a close object, the robot will recharge
+sub recharge
+	if prox.horizontal[2] > RECHARGE_NEAR then
+		energy += RECHARGE_RATE
+		# Check value not above maximum:
+		if energy > MAX_PHYSIOLOGICAL_VAR then
+			energy = MAX_PHYSIOLOGICAL_VAR
+		end
+	end
+
+
+# If either ground sensor detects a dark patch, the robot will re-hydrate
+sub rehydrate
+	if prox.ground.delta[0] &lt; HYDRATION_THRESH or prox.ground.delta[1] &lt; HYDRATION_THRESH then
+		hydration += HYDRATION_RATE
+		if hydration > MAX_PHYSIOLOGICAL_VAR then
+			hydration = MAX_PHYSIOLOGICAL_VAR
+		end
+	end
+
+
+# Behaviour: the robot is seeking to recharge, by approaching any object (energy source) it finds.
+# It does this using Braitenberg-like movement to approach obstacles.
+sub behaviour_seek_energy
+	call leds.top(0,32,0) # green led when seeking to recharge
+	callsub braitenberg_approach
+
+
+# Behaviour: the robot is seeking to hydrate, by stopping on top of any resources it finds
+# Otherwise it will wander around the environment using Braitenberg-like movement to avoid obstacles
+sub behaviour_seek_hydrate
+	call leds.top(0,0,32) # green blue when seeking to re-hydrate
+	if prox.ground.delta[0] &lt; HYDRATION_THRESH or prox.ground.delta[1] &lt; HYDRATION_THRESH then
+		mot_l = 0 # stop motors
+		mot_r = 0
+	else
+		callsub braitenberg_avoid
+	end
+	
+
+# The robot has died...
+# Set flags, stop motors, stop timer
+# Indicate death with red LED
+sub dead
+	call leds.top(32,0,0)
+	alive = 0
+	timer.period[0] = 0
+	motor.left.target = 0
+	motor.right.target = 0
+
+
+
+# Handle proximity events. Called when sensor values update (10Hz).
+# Behaviour is selected based on latest sensor values (and internal values)
+onevent prox
+	if alive==0 then # exit if dead
+		return
+	end
+	callsub wta_motivations
+
+	# If motor values are &lt; -MAX_SPEED or > +MAX_SPEED fix them
+	call math.clamp(mot_l, mot_l, -MAX_SPEED, MAX_SPEED)
+	call math.clamp(mot_r, mot_r, -MAX_SPEED, MAX_SPEED)
+
+	# Write calculated motor values to Thymio variables to run motors
+	motor.left.target = mot_l
+	motor.right.target = mot_r
+
+
+# Timer0 event handler, called every PHYSIOLOGY_TICK milliseconds
+# Used to drive physiology - variable decay, recharging &amp; rehydration 
+onevent timer0
+	callsub physiological_var_decay
+	callsub recharge
+	callsub rehydrate</node>
+
+
+</network>

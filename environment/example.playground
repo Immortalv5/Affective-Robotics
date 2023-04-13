@@ -1,0 +1,25 @@
+<!DOCTYPE aseba-playground>
+<aseba-playground>
+	<!-- Colors (US spelling) can be defined by r,g,b components (from 0 to 1) and named for reference -->
+	<color name="white" r="1" g="1" b="1" />
+	<color name="black" r="0" g="0" b="0" />
+	<color name="light grey" r="0.8" g="0.8" b="0.8" />
+	<color name="red" r="0.9" g="0" b="0" />
+	<color name="green" r="0" g="0.9" b="0" />
+	<color name="blue" r="0" g="0" b="0.9" />
+	
+	<!-- World - a walled rectangular area with width (w) & height (h) in cm -->
+	<world w="140" h="140" color="light grey" />
+	
+	<!-- Camera - defined by x, y, altitude in cm; yaw, pitch in radians -->
+	<camera x="70" y="-60" altitude="110" yaw="1.57" pitch="-0.8" />
+
+	<!-- Robots -->
+	<robot type="thymio2" name="my_thymio" x="70" y="70" angle="-1.57" port="33333" nodeId="1" />
+
+	<!-- cylinders - defined by position within the world and radius. If mass is defined then they can be moved by robots -->
+	<cylinder x="40" y="70" r="2" h="12" color="blue" mass="5"/>
+
+	<!-- walls - defined by their position (x,y), dimensions (l1,l2,h) and angle in radians. If mass is defined then they can be moved by robots. -->
+	<wall x="100" y="70" l1="15" l2="10" h="12" color="red" angle="2.356" mass="20" />
+</aseba-playground>

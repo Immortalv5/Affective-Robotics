@@ -1,0 +1,88 @@
+<!DOCTYPE aesl-source>
+<network>
+
+
+<!--list of global events-->
+
+
+<!--list of constants-->
+<constant value="500" name="MAX_SPEED"/>
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node thymio-II-->
+<node nodeId="1" name="thymio-II"># Implement Braitenberg Vehicle-like behaviours for Thymio robot
+# Example solution (other solutions possible) for Practical 2, Ex 1
+# by Matthew Lewis
+
+# -------------------------------------------
+# Declare and optionally initialise variables
+# -------------------------------------------
+
+# Variables to hold motor values
+var mot_l
+var mot_r
+
+
+# ----------------------
+# Code called on startup
+# ----------------------
+
+# No initialisation needed!
+
+
+# --------------------------------------
+# Declare subroutines and event handlers
+# --------------------------------------
+
+# Subroutine to calculate wheel speeds from proximity sensors
+# Implements a version on Braitenberg Vehicle 2b ("aggression")
+# See diagram, Practical Sheet 2, top of page 2
+sub braitenberg_2b
+	# Contralateral connections
+	# Left motor has positive connections to sensors 3 &amp; 4
+	mot_l = prox.horizontal[3]/16
+	mot_l += prox.horizontal[4]/16
+
+	# Right motor has positive connections to sensors 0 &amp; 1
+	mot_r = prox.horizontal[0]/16
+	mot_r += prox.horizontal[1]/16
+
+
+# Subroutine to calculate wheel speeds from proximity sensors
+# Implements a version on Braitenberg Vehicle 3a ("love")
+# See diagram, Practical Sheet 2, middle of page 2
+sub braitenberg_3a
+	# Ipsilateral connections
+	# Left motor has default speed &amp; negative connections to sensors 0 &amp; 1
+	mot_l = 200
+	mot_l -= prox.horizontal[0]/16
+	mot_l -= prox.horizontal[1]/16
+
+	# Right motor has default speed &amp; negative connections to sensors 3 &amp; 4
+	mot_r = 200
+	mot_r -= prox.horizontal[3]/16
+	mot_r -= prox.horizontal[4]/16
+
+
+
+# Handle proximity events. Called when sensor values update (10Hz)
+# When sensor values update, use new values to update wheel speeds
+onevent prox
+	callsub braitenberg_2b
+	#callsub braitenberg_3a
+
+	# If motor values are &lt; -MAX_SPEED or > +MAX_SPEED fix them
+	call math.clamp(mot_l, mot_l, -MAX_SPEED, MAX_SPEED)
+	call math.clamp(mot_r, mot_r, -MAX_SPEED, MAX_SPEED)
+
+	# Write calculated motor values to Thymio variables to run motors
+	motor.left.target = mot_l
+	motor.right.target = mot_r
+</node>
+
+
+</network>

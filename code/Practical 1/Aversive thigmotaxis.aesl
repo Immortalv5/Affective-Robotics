@@ -1,0 +1,68 @@
+<!DOCTYPE aesl-source>
+<network>
+
+
+<!--list of global events-->
+
+
+<!--list of constants-->
+<constant value="600" name="THRESHOLD"/>
+<constant value="400" name="SPEED"/>
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node thymio-II-->
+<node nodeId="1" name="thymio-II">motor.left.target = SPEED
+motor.right.target = SPEED
+call leds.top(0,0,0)
+timer.period[0] = 0
+
+onevent prox
+	callsub Forward
+	if prox.horizontal[0] > THRESHOLD then
+		callsub TurnRight
+	end
+	if prox.horizontal[1] > THRESHOLD then
+		callsub TurnRight
+ 	end
+ 	if prox.horizontal[2] > THRESHOLD then
+		callsub Forward
+	end
+	if prox.horizontal[3] > THRESHOLD then
+		callsub TurnLeft
+	end
+	if prox.horizontal[4] > THRESHOLD then
+		callsub TurnLeft
+	end
+return
+
+onevent timer0
+	callsub Forward
+return
+
+sub TurnLeft
+	motor.left.target = -SPEED
+	motor.right.target = SPEED
+	call leds.top(16, 0, 16)
+	timer.period[0] = 0
+return
+
+sub TurnRight
+	motor.left.target = SPEED
+	motor.right.target = -SPEED
+	call leds.top(16, 0, 16)
+	timer.period[0] = 0
+return
+
+sub Forward
+	motor.left.target = SPEED
+	motor.right.target = SPEED
+	timer.period[0] = 0
+	call leds.top(0,16,0)
+return</node>
+
+
+</network>
